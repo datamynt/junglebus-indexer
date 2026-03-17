@@ -1,0 +1,23 @@
+# JungleBus subscription configuration.
+#
+# Create subscriptions at https://junglebus.gorillapool.io
+# Each subscription filters transactions by output script patterns.
+# The 'type' is your label — use it to route transactions in your handler.
+#
+# Usage: CONFIG=subscriptions.yaml node examples/social.js
+
+subscriptions:
+  - type: post
+    id: "your-subscription-id-here"
+
+  - type: like
+    id: "your-subscription-id-here"
+
+  - type: profile
+    id: "your-subscription-id-here"
+
+  # Add as many as you need:
+  # - type: payment
+  #   id: "..."
+  # - type: follow
+  #   id: "..."

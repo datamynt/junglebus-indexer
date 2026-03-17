@@ -1,0 +1,21 @@
+{
+  "name": "junglebus-indexer",
+  "version": "0.1.0",
+  "description": "Generic BSV transaction indexer powered by JungleBus. Parse B, MAP, and AIP protocols from any subscription into PostgreSQL.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "example": "node examples/social.js"
+  },
+  "dependencies": {
+    "@bsv/sdk": "^2.1.13",
+    "@gorillapool/js-junglebus": "^0.0.3",
+    "pg": "^8.13.1",
+    "yaml": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "Open BSV License"
+}
