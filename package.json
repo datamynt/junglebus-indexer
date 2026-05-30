@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "example": "node examples/social.js"
+    "example": "node examples/social.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@bsv/sdk": "^2.1.13",
