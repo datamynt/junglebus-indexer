@@ -10,8 +10,8 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@bsv/sdk": "^2.1.13",
-    "@gorillapool/js-junglebus": "^0.0.3",
+    "@bsv/sdk": "^2.1.4",
+    "@gorillapool/js-junglebus": "^0.2.0",
     "pg": "^8.13.1",
     "yaml": "^2.7.0"
   },
