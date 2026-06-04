@@ -75,7 +75,6 @@ const initSchema = async () => {
                 type TEXT,
                 app TEXT,
                 signer TEXT,
-                signer_verified BOOLEAN DEFAULT FALSE,
                 content TEXT,
                 media_type TEXT,
                 map_data JSONB,
@@ -104,11 +103,10 @@ const handleTransaction = async (tx, sub) => {
     const mapType = (tx.map.type || sub.type || 'unknown').toLowerCase();
 
     // Store the raw parsed data — let queries handle the filtering.
-    // tx.signerVerified tells you whether the AIP signature actually checked
-    // out (true) or the signer field is merely claimed (false).
+    // tx.signer is the *claimed* (unverified) AIP address — see the README note.
     const sql = `
-        INSERT INTO transactions (txid, block_height, block_time, type, app, signer, signer_verified, content, media_type, map_data, tags)
-        VALUES ($1, $2, to_timestamp($3), $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO transactions (txid, block_height, block_time, type, app, signer, content, media_type, map_data, tags)
+        VALUES ($1, $2, to_timestamp($3), $4, $5, $6, $7, $8, $9, $10)
         ON CONFLICT (txid) DO UPDATE SET block_height = EXCLUDED.block_height;
     `;
 
@@ -119,7 +117,6 @@ const handleTransaction = async (tx, sub) => {
         mapType,
         tx.map.app || 'unknown',
         tx.signer,
-        tx.signerVerified,
         tx.b.content || tx.map.content || tx.map.body || '',
         tx.b.mediaType || 'text/plain',
         JSON.stringify(tx.map),
