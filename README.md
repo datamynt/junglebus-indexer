@@ -7,6 +7,8 @@ Generic BSV transaction indexer powered by [JungleBus](https://junglebus.gorilla
 
 Subscribe to any on-chain data pattern, parse [Bitcoin Schema](https://bitcoinschema.org) protocols (B, MAP, AIP), and store it wherever you want. Comes with a production-tested engine featuring automatic reconnection, watchdog stale-stream detection, and query timeouts.
 
+Written in **TypeScript** with full type definitions, and performs **real AIP ECDSA signature verification** — it doesn't just trust the claimed signer, it recovers the signing key from the signature and checks it.
+
 ## Why
 
 JungleBus lets you subscribe to filtered transaction streams across the entire BSV blockchain — from genesis to mempool. This library wraps that into a simple `onTransaction` callback pattern with the resilience features you need for production.
@@ -23,9 +25,10 @@ npm install
 
 **1. Create a subscription** at [junglebus.gorillapool.io](https://junglebus.gorillapool.io). You'll get a subscription ID for your filter.
 
-**2. Run the included example:**
+**2. Build and run the included example:**
 
 ```bash
+npm run build
 DB_NAME=indexer SUB_POST=<your-subscription-id> node examples/social.js
 ```
 
@@ -62,9 +65,17 @@ JungleBus (GorillaPool)
 
 ## Use as a library
 
-```javascript
-import { createEngine, parseScript, extractProtocols } from './src/index.js';
-import { initPool, query, healthCheck } from './src/db.js';
+Written in TypeScript — import everything (and its types) from the package root:
+
+```typescript
+import {
+    createEngine,
+    initPool,
+    query,
+    healthCheck,
+    type ParsedTransaction,
+    type Subscription,
+} from 'junglebus-indexer';
 
 // Set up database
 initPool({ host: 'localhost', database: 'myapp' });
@@ -72,8 +83,11 @@ initPool({ host: 'localhost', database: 'myapp' });
 // Create engine with your handler
 const engine = createEngine({
     server: 'junglebus.gorillapool.io',
-    onTransaction: async (tx, sub) => {
-        console.log(`${tx.map.type} from ${tx.signer}: ${tx.b.content}`);
+    onTransaction: async (tx: ParsedTransaction, sub: Subscription) => {
+        // tx.signer is the *claimed* address; tx.signerVerified tells you
+        // whether the AIP ECDSA signature actually checks out.
+        const trust = tx.signerVerified ? 'verified' : 'unverified';
+        console.log(`${tx.map.type} from ${tx.signer} (${trust}): ${tx.b.content}`);
         // Save, filter, forward — your logic here
     },
     healthCheck,
@@ -85,31 +99,66 @@ await engine.start([
 ], 800000);
 ```
 
+You can also call the AIP verifier directly:
+
+```typescript
+import { parseScript, extractProtocols, verifyAip } from 'junglebus-indexer';
+
+const chunks = parseScript(lockingScriptHex);
+const { signer, signerVerified, signerAddress } = extractProtocols(chunks);
+```
+
+Exported types include `ParsedTransaction`, `ExtractedProtocols`, `Chunk`,
+`BData`, `MapData`, `EngineOptions`, `Engine`, `Subscription`, and
+`AipVerifyResult` — so consumers get full autocomplete.
+
 ## Parsed transaction format
 
 Your `onTransaction` callback receives:
 
-```javascript
+```typescript
 {
     txid: "abc123...",           // Transaction ID
-    blockHeight: 850000,        // Block height (0 for mempool)
-    blockTime: 1710000000,      // Unix timestamp
-    signer: "1A1zP1...",        // Bitcoin address from AIP signature
-    map: {                      // All MAP key-value pairs
+    blockHeight: 850000,         // Block height (0 for mempool)
+    blockTime: 1710000000,       // Unix timestamp
+    signer: "1A1zP1...",         // CLAIMED Bitcoin address from the AIP block
+    signerVerified: true,        // Did the AIP ECDSA signature actually verify?
+    signerAddress: "1A1zP1...",  // Address recovered from the signature (null if unverified)
+    map: {                       // All MAP key-value pairs
         type: "post",
         app: "myapp",
         context: "...",
         tags: ["bsv", "dev"],
         // ... any MAP keys the transaction contains
     },
-    b: {                        // B protocol content
+    b: {                         // B protocol content
         content: "Hello world",
         mediaType: "text/plain",
         filename: null,
     },
-    outputs: [...],             // Raw BSV SDK output objects
+    outputs: [...],              // Raw BSV SDK output objects
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `txid` | `string` | Transaction ID |
+| `blockHeight` | `number` | Block height (0 for mempool) |
+| `blockTime` | `number` | Unix timestamp |
+| `signer` | `string` | **Claimed** signing address from the AIP block, or `"unknown"`. Kept for backward compatibility — do not trust it on its own |
+| `signerVerified` | `boolean` | `true` only if an AIP `BITCOIN_ECDSA` signature was present **and** the recovered key matched the claimed signer. This is the real cryptographic check |
+| `signerAddress` | `string \| null` | Address derived from the recovered signature key, or `null` when no valid signature verified |
+| `map` | `object` | All MAP key/value pairs plus a `tags` array |
+| `b` | `object` | B-protocol `{ content, mediaType, filename }` |
+| `outputs` | `array` | Raw BSV SDK output objects |
+
+> **Security note:** `signer` is only what the transaction *claims*. Gate trust
+> on `signerVerified === true` (or compare against `signerAddress`). The
+> verifier rebuilds the canonical AIP preimage — the concatenated content bytes
+> of every push up to and including the signing-address field — computes the
+> Bitcoin-Signed-Message digest, recovers the public key from the 65-byte
+> compact signature, and checks its P2PKH address equals the claimed signer.
+> Only generic AIP `BITCOIN_ECDSA` is supported.
 
 ## Protocols parsed
 
@@ -117,9 +166,13 @@ Your `onTransaction` callback receives:
 |----------|---------|----------------|
 | **B** | `19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut` | Content data (text, images, files) |
 | **MAP** | `1PuQa7K62MiKCtssSLKy1kh56WWU7MtUR5` | Structured metadata (type, app, tags, etc.) |
-| **AIP** | `15PciHG22SNLQJXMoSUaWVi7WSqc7hCfva` | Author identity (ECDSA signature → address) |
+| **AIP** | `15PciHG22SNLQJXMoSUaWVi7WSqc7hCfva` | Author identity — ECDSA signature, **actually verified** (recovers key → derives address → compares to claim) |
 
-See [bitcoinschema.org](https://bitcoinschema.org) for protocol specifications.
+AIP verification recovers the signing public key from the embedded 65-byte
+compact signature over the Bitcoin-Signed-Message digest of the canonical
+preimage, then checks the derived P2PKH address (or compressed pubkey hex, for
+that Bitcom variant) matches the claimed signer. Only generic `BITCOIN_ECDSA`
+AIP is supported. See [bitcoinschema.org](https://bitcoinschema.org) for protocol specifications.
 
 ## Resilience features
 
