@@ -13,8 +13,6 @@
  * Thanks to GorillaPool for JungleBus and the Bitcoin Schema ecosystem.
  */
 
-import { verifyAip } from "./aip.js";
-
 /** Canonical Bitcom protocol-prefix addresses. */
 export const PROTOCOLS = {
   B: "19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut",
@@ -54,24 +52,17 @@ export interface MapData {
 
 /**
  * Result of {@link extractProtocols}: the parsed B/MAP data plus the AIP
- * author identity. `signer` is the *claimed* address (backward compatible);
- * `signerVerified` is the result of actually checking the ECDSA signature.
+ * author identity. `signer` is the *claimed* signing address as stated on-chain
+ * — it is extracted, not cryptographically verified (see the README note on AIP
+ * verification).
  */
 export interface ExtractedProtocols {
   /** MAP metadata (key/value pairs + `tags`). */
   map: MapData;
   /** B-protocol content. */
   b: BData;
-  /** Claimed AIP signing address (or `"unknown"` if no AIP block). */
+  /** Claimed AIP signing address (or `"unknown"` if no AIP block). Unverified. */
   signer: string;
-  /** True iff the AIP signature was present AND cryptographically verified. */
-  signerVerified: boolean;
-  /**
-   * Address derived from the recovered signature key, or null when no valid
-   * AIP signature was verified. When `signerVerified` is true this equals
-   * `signer` (or, for pubkey-hex AIP blocks, the address derived from it).
-   */
-  signerAddress: string | null;
 }
 
 /**
@@ -133,21 +124,18 @@ export const parseScript = (hex: string | null | undefined): Chunk[] => {
 /**
  * Extract B, MAP, and AIP protocol data from parsed chunks.
  *
- * The AIP signature (if present and using `BITCOIN_ECDSA`) is cryptographically
- * verified: the public key is recovered from the signature and its derived
- * address is compared against the claimed signing address. The claimed
- * `signer` is always returned (backward compatible), and `signerVerified`
- * reports whether the signature actually checks out.
+ * For AIP blocks using `BITCOIN_ECDSA`, the *claimed* signing address is
+ * extracted into `signer`. This library does not cryptographically verify the
+ * signature — see the README note on AIP verification for why. Treat `signer`
+ * as an unverified hint, not proof of authorship.
  *
  * @param chunks - Decoded OP_RETURN chunks from {@link parseScript}.
- * @returns The extracted protocol data, including verification result.
+ * @returns The extracted protocol data.
  */
 export const extractProtocols = (chunks: Chunk[]): ExtractedProtocols => {
   const map: MapData = { tags: [] };
   const b: BData = { content: "", mediaType: "text/plain", filename: null };
   let signer = "unknown";
-  let signerVerified = false;
-  let signerAddress: string | null = null;
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -200,21 +188,18 @@ export const extractProtocols = (chunks: Chunk[]): ExtractedProtocols => {
       }
     }
 
-    // --- AIP Protocol: author identity (claimed + verified) ---
+    // --- AIP Protocol: author identity (claimed signing address only) ---
     if (chunk.str === PROTOCOLS.AIP) {
       if (
         chunks[i + 1] &&
         chunks[i + 1].str === "BITCOIN_ECDSA" &&
         chunks[i + 2]
       ) {
+        // Claimed signing address as stated on-chain — not verified.
         signer = chunks[i + 2].str;
-        // Real ECDSA verification against the claimed signer.
-        const result = verifyAip(chunks, i);
-        signerVerified = result.verified;
-        signerAddress = result.recoveredAddress;
       }
     }
   }
 
-  return { map, b, signer, signerVerified, signerAddress };
+  return { map, b, signer };
 };

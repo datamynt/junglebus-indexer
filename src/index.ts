@@ -28,7 +28,4 @@ export type {
   ExtractedProtocols,
 } from "./parser.js";
 
-export { verifyAip, buildAipPreimage, AIP_PROTOCOL } from "./aip.js";
-export type { AipVerifyResult } from "./aip.js";
-
 export { initPool, query, healthCheck, getPool } from "./db.js";

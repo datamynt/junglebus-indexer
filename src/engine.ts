@@ -37,12 +37,8 @@ export interface ParsedTransaction {
   blockHeight: number;
   /** Effective unix timestamp (block time, or now for mempool). */
   blockTime: number;
-  /** Claimed AIP signing address, or `"unknown"`. */
+  /** Claimed (unverified) AIP signing address, or `"unknown"`. */
   signer: string;
-  /** True iff the AIP signature was present AND cryptographically verified. */
-  signerVerified: boolean;
-  /** Address derived from the recovered signature key, or null. */
-  signerAddress: string | null;
   /** All MAP key/value pairs plus the `tags` array. */
   map: MapData;
   /** B-protocol content. */
@@ -158,8 +154,6 @@ export const createEngine = (options: EngineOptions): Engine => {
           map: parsed.map,
           b: parsed.b,
           signer: parsed.signer,
-          signerVerified: parsed.signerVerified,
-          signerAddress: parsed.signerAddress,
           outputs: t.outputs,
         },
         sub,

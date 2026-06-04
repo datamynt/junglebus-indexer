@@ -123,7 +123,6 @@ describe("extractProtocols", () => {
     );
     const res = extractProtocols(chunks);
     expect(res.signer).toBe("unknown");
-    expect(res.signerVerified).toBe(false);
   });
 
   test("collects MAP ADD tags", () => {
@@ -162,12 +161,13 @@ describe("extractProtocols", () => {
     expect(signer).toBe(addr);
   });
 
-  test("an unsigned/claim-only AIP block does NOT verify", () => {
-    // A forged signer with no real signature push: signerVerified must be false.
+  test("returns the claimed AIP signer verbatim (no verification)", () => {
+    // The parser extracts the claimed signing address as-is. It does not
+    // cryptographically verify the AIP signature — `signer` is a hint, not proof.
     const addr = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
     const chunks = parseScript(
       opReturn(pushStr(PROTOCOLS.AIP), pushStr("BITCOIN_ECDSA"), pushStr(addr)),
     );
-    expect(extractProtocols(chunks).signerVerified).toBe(false);
+    expect(extractProtocols(chunks).signer).toBe(addr);
   });
 });
