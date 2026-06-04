@@ -15,6 +15,47 @@ JungleBus lets you subscribe to filtered transaction streams across the entire B
 
 Built on lessons learned running indexers for [peck.to](https://peck.to). Special thanks to GorillaPool for making JungleBus available — it kickstarted the whole project.
 
+## Subscriptions — filtering through GorillaPool's node
+
+This is the whole point of JungleBus: instead of running a full node and syncing
+the entire chain yourself, you subscribe to a **server-side filter** on
+GorillaPool's pre-indexed node and receive only the transactions you care about —
+streamed from any start block all the way to mempool.
+
+**A subscription is a filter you create once**, on the
+[JungleBus dashboard](https://junglebus.gorillapool.io) (or via the JungleBus
+API). You tell it what to match — typically the **addresses** and/or **Bitcom
+protocol prefixes** that appear in the transactions you want:
+
+- Index *all* Bitcoin Schema metadata → filter on the **MAP** protocol address
+  `1PuQa7K62MiKCtssSLKy1kh56WWU7MtUR5`.
+- Index on-chain content → filter on the **B** protocol address
+  `19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut`.
+- Index a single app or wallet → filter on its address(es).
+
+(See the [JungleBus docs](https://junglebus.gorillapool.io) for the exact filter
+format — this library *consumes* a subscription, it doesn't create one.)
+
+Creating the subscription gives you an **ID**. In this library each subscription
+is just a `{ type, id }` pair — drop them in `subscriptions.yaml` (or pass them as
+`SUB_*` env vars):
+
+```yaml
+subscriptions:
+  - type: post      # your routing label — passed to your handler as sub.type
+    id: "5f1d…"     # the JungleBus subscription ID (defines the on-chain filter)
+  - type: profile
+    id: "a93c…"
+```
+
+- **`id`** is the JungleBus subscription ID — it defines the actual on-chain filter.
+- **`type`** is purely *your* label for routing: the engine hands it to your
+  handler as `sub.type`, so you can branch on which stream a transaction came from.
+
+Each entry becomes an **independent stream** with its own auto-reconnect and
+watchdog. The engine resumes every stream from the highest block already in your
+database (or `START_HEIGHT` on first run), so you backfill once and then stay live.
+
 ## Quick start
 
 ```bash
@@ -23,7 +64,7 @@ cd junglebus-indexer
 npm install
 ```
 
-**1. Create a subscription** at [junglebus.gorillapool.io](https://junglebus.gorillapool.io). You'll get a subscription ID for your filter.
+**1. Create a subscription** at [junglebus.gorillapool.io](https://junglebus.gorillapool.io). You'll get a subscription ID for your filter — see [Subscriptions](#subscriptions--filtering-through-gorillapools-node) for what to filter on and why this is the whole point.
 
 **2. Build and run the included example:**
 
@@ -49,9 +90,9 @@ JungleBus (GorillaPool)
     │
     ▼
 ┌─────────────────────┐
-│  engine.js          │  Manages connections, watchdog, reconnection
-│  ├── parser.js      │  Decodes OP_RETURN → B + MAP + AIP protocols
-│  └── db.js          │  PostgreSQL pool with timeout-guarded queries
+│  engine.ts          │  Manages connections, watchdog, reconnection
+│  ├── parser.ts      │  Decodes OP_RETURN → B + MAP + AIP protocols
+│  └── db.ts          │  PostgreSQL pool with timeout-guarded queries
 └────────┬────────────┘
          │
          │  onTransaction({ txid, map, b, signer, ... })
