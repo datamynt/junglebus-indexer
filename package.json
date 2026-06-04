@@ -1,19 +1,41 @@
 {
   "name": "junglebus-indexer",
-  "version": "0.1.0",
-  "description": "Generic BSV transaction indexer powered by JungleBus. Parse B, MAP, and AIP protocols from any subscription into PostgreSQL.",
+  "version": "0.2.0",
+  "description": "Generic BSV transaction indexer powered by JungleBus. Parse B, MAP, and AIP protocols (with real AIP signature verification) from any subscription into PostgreSQL.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "examples",
+    "subscriptions.example.yaml",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "start": "node src/index.js",
-    "example": "node examples/social.js",
-    "test": "node --test"
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "start": "npm run build && node examples/social.js",
+    "example": "npm run build && node examples/social.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bsv/sdk": "^2.1.4",
     "@gorillapool/js-junglebus": "^0.2.0",
     "pg": "^8.13.1",
     "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=18.0.0"
