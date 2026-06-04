@@ -2,3 +2,8 @@ node_modules/
 dist/
 .env
 subscriptions.yaml
+
+# internal working files — not for public repo
+IN_FLIGHT.md
+CLAUDE.md
+.gemini/
