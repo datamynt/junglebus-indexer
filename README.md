@@ -1,5 +1,8 @@
 # junglebus-indexer
 
+[![CI](https://github.com/datamynt/junglebus-indexer/actions/workflows/ci.yml/badge.svg)](https://github.com/datamynt/junglebus-indexer/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Open%20BSV-blue.svg)](LICENSE)
+
 Generic BSV transaction indexer powered by [JungleBus](https://junglebus.gorillapool.io) from [GorillaPool](https://gorillapool.io).
 
 Subscribe to any on-chain data pattern, parse [Bitcoin Schema](https://bitcoinschema.org) protocols (B, MAP, AIP), and store it wherever you want. Comes with a production-tested engine featuring automatic reconnection, watchdog stale-stream detection, and query timeouts.
