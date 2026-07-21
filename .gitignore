@@ -6,4 +6,9 @@ subscriptions.yaml
 # internal working files — not for public repo
 IN_FLIGHT.md
 CLAUDE.md
+ORCHESTRATION.md
+RUNBOOK*.md
+CONVERGENCE*.md
+*.privat.md
 .gemini/
+.geminirules
